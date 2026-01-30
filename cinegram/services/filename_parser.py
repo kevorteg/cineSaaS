@@ -24,13 +24,26 @@ class FilenameParser:
             # 3. Remove other common spam if needed
             clean_name = clean_name.replace('_', ' ') # Replace underscores
             
-            # Guessit magic on cleaned name
+            # Strategy 1: Cleaned Name (Anti-Spam)
             data = guessit(clean_name)
-            
             title = data.get('title')
             year = data.get('year')
+
+            # Strategy 2: Original Name (Fallback if Cleaned fails)
+            if not title:
+                logger.warning(f"Strategy 1 failed for '{filename}'. Trying original...")
+                data_orig = guessit(filename)
+                title = data_orig.get('title')
+                year = data_orig.get('year') or year # Keep year if found in strategy 1
+
+            # Strategy 3: Raw Filename (Last Resort)
+            if not title:
+                logger.warning(f"Strategy 2 failed for '{filename}'. Using raw filename.")
+                # Remove extension and basic separators to make a searchable title
+                base = filename.rsplit('.', 1)[0]
+                title = base.replace('.', ' ').replace('_', ' ').strip()
             
-            # Basic Validation
+            # Final Validation
             if not title:
                 return None
                 

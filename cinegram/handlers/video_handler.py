@@ -99,15 +99,28 @@ async def video_entry(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await message.reply_text("❌ Error generando la imagen.")
         return
 
-     # --- 5. PUBLISH TO CHANNEL ---
+    # --- 5. PUBLISH TO CHANNEL (With Retry Logic) ---
     channel_id = settings.CHANNEL_ID
     
+    # Imports for retry logic
+    import asyncio
+    from telegram.error import RetryAfter
+
     try:
         # Send Image
         if image_path and os.path.exists(image_path):
-            with open(image_path, 'rb') as photo:
-                await context.bot.send_photo(chat_id=channel_id, photo=photo)
-                
+            while True:
+                try:
+                    with open(image_path, 'rb') as photo:
+                        await context.bot.send_photo(chat_id=channel_id, photo=photo)
+                    break # Success, exit loop
+                except RetryAfter as e:
+                    logger.warning(f"Flood control exceeded. Sleeping for {e.retry_after} seconds.")
+                    await asyncio.sleep(e.retry_after)
+                except Exception as e:
+                    logger.error(f"Error sending photo: {e}")
+                    break # Other error, skip photo
+
         # Prepare Hashtags
         hashtag_list = []
         if genre:
@@ -137,14 +150,21 @@ async def video_entry(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [[InlineKeyboardButton("📸 Instagram", url=settings.INSTAGRAM_URL)]]
         reply_markup = InlineKeyboardMarkup(keyboard)
 
-        await context.bot.send_video(
-            chat_id=channel_id,
-            video=file_id,
-            caption=caption,
-            parse_mode="Markdown",
-            reply_markup=reply_markup
-        )
-        
+        while True:
+            try:
+                await context.bot.send_video(
+                    chat_id=channel_id,
+                    video=file_id,
+                    caption=caption,
+                    parse_mode="Markdown",
+                    reply_markup=reply_markup
+                )
+                break # Success
+            except RetryAfter as e:
+                logger.warning(f"Flood control exceeded for video. Sleeping for {e.retry_after} seconds.")
+                await message.reply_text(f"⏳ Telegram me pidió esperar {e.retry_after}s... (Pausando para evitar bloqueo)")
+                await asyncio.sleep(e.retry_after)
+            
         await message.reply_text(f"✅ **Publicado:** {title} ({year})")
         
     except Exception as e:
