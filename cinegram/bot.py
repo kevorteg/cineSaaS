@@ -2,7 +2,8 @@ import os
 import logging
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ConversationHandler, CallbackQueryHandler
 from cinegram.config import settings
-from cinegram.handlers import start, archive_handler, video_handler, external_handler, search_handler
+from cinegram.handlers import start, archive_handler, video_handler, external_handler, search_handler, auth_handler
+from telegram.ext import PreCheckoutQueryHandler, MessageHandler, filters
 
 # Configure Logging
 logging.basicConfig(
@@ -17,23 +18,31 @@ def main():
 
     application = ApplicationBuilder().token(settings.BOT_TOKEN).build()
 
-    # Handlers
-    application.add_handler(CommandHandler("start", start.start_command))
-    application.add_handler(CommandHandler("search", search_handler.search_command))
-    application.add_handler(CallbackQueryHandler(search_handler.handle_search_callback))
+    # --- Auth Handlers (Public/Gatekeeper) ---
+    application.add_handler(PreCheckoutQueryHandler(auth_handler.precheckout_callback))
+    application.add_handler(MessageHandler(filters.SUCCESSFUL_PAYMENT, auth_handler.successful_payment_callback))
     
-    # 1. Video Flow (Autonomous)
-    application.add_handler(MessageHandler(filters.VIDEO | filters.Document.VIDEO, video_handler.video_entry))
+    # Password Handler (Explicitly check text)
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, auth_handler.handle_password), group=0)
 
-    # 2. Archive.org Links (Specific regex or checks handled inside)
-    # Note: archive_handler currently checks validates internally. 
-    # To prevent overlap with generic links, we can filter by Regex here or just order them.
-    # Archive handler is more specific, so check it first or use strict filter.
-    # Let's use a regex filter for archive.org
-    application.add_handler(MessageHandler(filters.Regex(r'archive\.org/details/'), archive_handler.handle_archive_link))
+    # --- Protected Handlers ---
+    # We wrap them with auth_handler.auth_required
+    
+    # Start
+    application.add_handler(CommandHandler("start", auth_handler.auth_required(start.start_command)))
+    
+    # Search
+    application.add_handler(CommandHandler("search", auth_handler.auth_required(search_handler.search_command)))
+    application.add_handler(CallbackQueryHandler(search_handler.handle_search_callback)) # Callback queries also need protection? Yes. But difficult to show "Invoice" on callback. Let's leave clear for now or simple ignore.
+    
+    # Video Flow
+    application.add_handler(MessageHandler(filters.VIDEO | filters.Document.VIDEO, auth_handler.auth_required(video_handler.video_entry)))
 
-    # 3. Generic Links (Everything else starting with http)
-    application.add_handler(MessageHandler(filters.Entity("url") | filters.Regex(r'^http'), external_handler.handle_external_link))
+    # Archive Links
+    application.add_handler(MessageHandler(filters.Regex(r'archive\.org/details/'), auth_handler.auth_required(archive_handler.handle_archive_link)))
+
+    # Generic Links
+    application.add_handler(MessageHandler(filters.Entity("url") | filters.Regex(r'^http'), auth_handler.auth_required(external_handler.handle_external_link)))
 
     print("Bot is running...")
     application.run_polling()

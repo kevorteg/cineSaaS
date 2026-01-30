@@ -10,6 +10,10 @@ INSTAGRAM_URL = os.getenv("INSTAGRAM_URL", "https://instagram.com")
 TMDB_API_KEY = os.getenv("TMDB_API_KEY")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "dolphin-llama3:latest")
 
+# Access Control & Payments
+ADMIN_ID = int(os.getenv("ADMIN_ID", "0")) # Owner ID
+ACCESS_PASSWORD = os.getenv("ACCESS_PASSWORD", "cinegram123") # Fallback password
+STARS_PRICE = 50 # Cost in Stars to unlock
 
 # Paths
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
