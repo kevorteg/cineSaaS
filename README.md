@@ -1,68 +1,86 @@
-# Cinegram Bot 🎬
+# CineGram Bot
 
-Bot de Telegram para la automatización de publicaciones de películas de dominio público desde Internet Archive.
+![Python](https://img.shields.io/badge/Python-3.14-blue?style=flat-square&logo=python)
+![Telegram](https://img.shields.io/badge/Telegram-Bot_API-blue?style=flat-square&logo=telegram)
+![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
+![Status](https://img.shields.io/badge/Status-Active-success?style=flat-square)
 
-## 📋 Características
+**Automated Public Domain Movie Publishing Bot for Telegram.**
 
-- **Entrada**: Acepta enlaces de Internet Archive (`https://archive.org/details/...`).
-- **Generación de Posters**: Crea imágenes Full HD (1920x1080) con título y sinopsis superpuestos.
-- **Publicación Automatizada**: Envía la imagen generada seguida de la información de la película.
-- **Integración Social**: Botón para redirigir a Instagram.
-- **Open Source**: Código modular y limpio.
+CineGram autonomously processes video files, extracts metadata, translates synopses, and generates professional posters for Telegram channels.
 
-## 🚀 Instalación
+---
 
-1.  **Clonar el repositorio** (o descargar los archivos):
+## Architecture & Features
+
+This project utilizes a modular architecture designed for stability and autonomy.
+
+*   **Intelligent Parsing**: Uses `guessit` to accurately extract titles and years from complex filenames (e.g., handles `Movie.Title.2024.1080p.WEB-DL`).
+*   **Metadata Integration**: Fetches real-time data from **TMDB** (The Movie Database).
+*   **AI Translation**: Integrates **Ollama** (running locally) to translate English synopses to Latin American Spanish automatically.
+*   **Strict Validation**: Prevents publishing of incomplete content (missing poster or year).
+*   **Dynamic Watermarking**: Applies a custom "CINEGRAM" watermark or logo to generated posters using `Pillow`.
+*   **Direct Channel Publishing**: bypasses user forwarding and publishes processed content directly to the configured channel.
+
+## Installation
+
+### Prerequisites
+*   Python 3.9+
+*   [Ollama](https://ollama.com/) (for AI translation)
+*   TMDB API Key
+
+### Setup
+
+1.  **Clone the Repository**
     ```bash
-    git clone https://github.com/tu-usuario/cinegram.git
+    git clone https://github.com/kevorteg/cinegram.git
     cd cinegram
     ```
 
-2.  **Crear entorno virtual** (Recomendado):
-    ```bash
-    python -m venv venv
-    # Windows
-    venv\Scripts\activate
-    # Linux/Mac
-    source venv/bin/activate
-    ```
-
-3.  **Instalar dependencias**:
+2.  **Install Dependencies**
     ```bash
     pip install -r requirements.txt
     ```
 
-4.  **Configuración**:
-    - Copia el archivo `.env.example` a `.env`:
-      ```bash
-      cp .env.example .env # O hazlo manualmente
-      ```
-    - Edita `.env` y añade tu `BOT_TOKEN` de Telegram y otros ajustes.
-
-## 🏃‍♂️ Uso
-
-1.  Inicia el bot:
-    ```bash
-    python bot.py
+3.  **Configuration**
+    Copy `.env.example` to `.env` and populate the variables:
+    ```ini
+    BOT_TOKEN=your_telegram_bot_token
+    CHANNEL_ID=-100xxxxxxxxxx
+    TMDB_API_KEY=your_tmdb_key
+    # Optional: AI Model Configuration
+    OLLAMA_MODEL=dolphin-llama3:latest
     ```
-2.  En Telegram, envía `/start` al bot.
-3.  Envía un enlace de una película de Internet Archive (ej: `https://archive.org/details/NightOfTheLivingDead`).
-4.  El bot responderá con:
-    - Poster generado con título y sinopsis.
-    - Mensaje con metadatos (Año, Género, Idioma) y enlace al video.
 
-## ⚠️ Aviso Legal
+## Usage
 
-Este software está diseñado para trabajar exclusivamente con contenido de **Dominio Público** (Public Domain). El usuario es responsable de verificar los derechos de autor del material que procesa.
+1.  **Start the Bot**
+    ```bash
+    python -m cinegram.bot
+    ```
 
-## 🛠️ Estructura del Proyecto
+2.  **Interact**
+    *   **Forward a Video**: The bot will auto-clean the title, fetch data, translate the synopsis, and publish to the channel.
+    *   **Search**: Use `/search Movie Name` to find content manualy.
+    *   **Links**: Send an Internet Archive link to process it.
 
-```
+## Development
+
+**Project Structure:**
+```text
 cinegram/
-├── bot.py                  # Punto de entrada
-├── config/                 # Configuraciones
-├── handlers/               # Gestores de comandos y mensajes
-├── services/               # Lógica de negocio (Archive API, Imagenes)
-├── utils/                  # Ayudantes generales
-└── assets/                 # Recursos (Fuentes, Plantillas)
+├── bot.py                  # Entry Point
+├── config/                 # Settings & Environment
+├── handlers/               # Command & Message Handlers
+├── services/               # Core Logic (TMDB, Ollama, ImageGen)
+└── utils/                  # Helper functions
 ```
+
+## Contact & Ideas
+
+Have a bot idea? Interested in custom automation?
+
+**Contact me on Telegram:** [@KrimsonByte](https://t.me/KrimsonByte)
+
+---
+*Built with precision. No bloat.*
