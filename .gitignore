@@ -1,0 +1,18 @@
+# Environment Variables (Secrets)
+.env
+
+# Python Cache
+__pycache__/
+*.py[cod]
+
+# Temporary Files
+temp/
+cinegram/assets/temp/
+
+# IDE settings
+.vscode/
+.idea/
+
+# OS files
+Thumbs.db
+Desktop.ini
