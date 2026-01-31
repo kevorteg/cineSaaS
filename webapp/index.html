@@ -313,6 +313,73 @@
         </div>
     </section>
 
+    <!-- Person View (NEW) -->
+    <section id="person-view" class="fixed inset-0 bg-[#0b0e11] z-[130] overlay-view overflow-y-auto">
+        <div
+            class="sticky top-0 bg-[#0b0e11]/95 backdrop-blur-md p-4 border-b border-white/5 flex gap-4 items-center z-50">
+            <button onclick="closePerson()" class="p-2 -ml-2 text-gray-400">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                </svg>
+            </button>
+            <span class="font-black text-lg text-white" id="person-name"></span>
+        </div>
+        <div class="p-5 pb-20">
+            <div class="flex gap-5 mb-6">
+                <div class="w-24 h-24 rounded-full overflow-hidden flex-shrink-0 border-2 border-white/10">
+                    <img id="person-img" class="w-full h-full object-cover">
+                </div>
+                <div class="flex-1 text-xs text-gray-400 space-y-2">
+                    <p id="person-role" class="text-red-500 font-bold uppercase tracking-wider"></p>
+                    <p id="person-birth"></p>
+                    <p id="person-place"></p>
+                </div>
+            </div>
+
+            <div class="mb-8">
+                <h3 class="text-xs font-black uppercase tracking-[0.2em] text-white mb-2">Biografía</h3>
+                <p id="person-bio" class="text-xs text-gray-300 leading-relaxed min-h-[50px]"></p>
+            </div>
+
+            <div>
+                <h3 class="text-xs font-black uppercase tracking-[0.2em] text-white mb-4">Filmografía</h3>
+                <div id="person-credits" class="movie-grid"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Company View (NEW) -->
+    <section id="company-view" class="fixed inset-0 bg-[#0b0e11] z-[130] overlay-view overflow-y-auto">
+        <div
+            class="sticky top-0 bg-[#0b0e11]/95 backdrop-blur-md p-4 border-b border-white/5 flex gap-4 items-center z-50">
+            <button onclick="closeCompany()" class="p-2 -ml-2 text-gray-400">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                </svg>
+            </button>
+            <span class="font-black text-lg text-white" id="company-name"></span>
+        </div>
+        <div class="p-5 pb-20">
+            <div class="flex items-center justify-center p-8 bg-white/5 rounded-2xl mb-8 border border-white/10">
+                <img id="company-logo" class="h-16 object-contain filter brightness-200 contrast-0 invert">
+            </div>
+
+            <div class="mb-8">
+                <h3 class="text-[10px] font-black uppercase tracking-[0.2em] text-red-600 mb-3 flex items-center gap-2">
+                    <span class="w-1 h-3 bg-red-600 rounded-full"></span>Más Taquillera
+                </h3>
+                <div id="company-top-movie"></div>
+            </div>
+
+            <div>
+                <h3 class="text-[10px] font-black uppercase tracking-[0.2em] text-red-600 mb-3 flex items-center gap-2">
+                    <span class="w-1 h-3 bg-red-600 rounded-full"></span>Catálogo
+                </h3>
+                <div id="company-catalog" class="movie-grid"></div>
+            </div>
+        </div>
+    </section>
+
     <!-- Player Overlay -->
     <section id="player-view" class="fixed inset-0 bg-black z-[150] hidden flex flex-col">
         <div class="p-4 flex justify-between items-center bg-black/80 backdrop-blur z-10">
@@ -325,16 +392,12 @@
             <img src="./logo.png" class="h-6 opacity-50">
         </div>
         <div class="flex-1 flex flex-col items-center justify-center bg-black relative">
-            <!-- Iframe Container that maintains 16:9 but fits screen -->
             <div class="w-full aspect-video bg-[#111]">
                 <iframe id="video-iframe" src="" allowfullscreen allow="autoplay; encrypted-media"></iframe>
             </div>
-            <!-- Loading Indicator -->
             <div class="absolute inset-0 flex items-center justify-center pointer-events-none" id="player-loader">
                 <div class="w-10 h-10 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div>
             </div>
-
-            <!-- Disclaimer -->
             <div class="p-6 text-center">
                 <p class="text-gray-500 text-[10px] leading-relaxed max-w-xs mx-auto">
                     ⚠️ <b>Nota:</b> El contenido es externo y podría estar en su idioma original (Inglés).
@@ -354,7 +417,9 @@
         const EMBED_BASE = 'https://vidsrc.xyz/embed';
 
         // State & Cache
-        const movieCache = {}; // Fix for search clicks
+        const movieCache = {};
+        const personCache = {};
+        const companyCache = {};
         let selectedMovie = null;
         let searchTimeout = null;
 
@@ -382,7 +447,7 @@
         }
 
         function updateHero(m) {
-            movieCache[m.id] = m; // Cache
+            movieCache[m.id] = m;
             document.getElementById('hero-img').src = `https://image.tmdb.org/t/p/original${m.backdrop_path}`;
             document.getElementById('hero-title').innerText = m.title || m.name;
             window.heroMovie = m;
@@ -404,13 +469,12 @@
         }
 
         function createCard(m) {
-            movieCache[m.id] = m; // Store in global cache
+            movieCache[m.id] = m;
 
             if (!m.poster_path) return '';
-            const score = Math.round(m.vote_average * 10);
+            const score = m.vote_average ? Math.round(m.vote_average * 10) : 0;
             const color = score >= 70 ? '#21d07a' : (score >= 40 ? '#d2d531' : '#db2323');
 
-            // Use ID-based click handler (Robust)
             return `
                 <div class="flex-shrink-0 w-32 relative active:scale-95 transition-transform cursor-pointer snap-center" onclick="openDetailById(${m.id})">
                     <div class="aspect-[2/3] rounded-xl overflow-hidden bg-gray-800 shadow-2xl border border-white/5">
@@ -451,8 +515,6 @@
         });
 
         // --- Details Logic ---
-
-        // New: Helper to open by ID
         function openDetailById(id) {
             const movie = movieCache[id];
             if (movie) openDetail(movie);
@@ -463,38 +525,40 @@
             const view = document.getElementById('detail-view');
             const type = movie.title ? 'movie' : 'tv';
 
-            // Basic Info
             document.getElementById('detail-backdrop').src = movie.backdrop_path ? `https://image.tmdb.org/t/p/w780${movie.backdrop_path}` : '';
             document.getElementById('detail-poster').src = `https://image.tmdb.org/t/p/w342${movie.poster_path}`;
             document.getElementById('detail-title').innerText = movie.title || movie.name;
             document.getElementById('detail-year').innerText = (movie.release_date || movie.first_air_date || '????').split('-')[0];
             document.getElementById('detail-overview').innerText = movie.overview || "Sin descripción.";
 
-            // Score
             const score = Math.round(movie.vote_average * 10);
             const sc = document.getElementById('detail-score');
             sc.innerText = score + '%';
             sc.style.borderColor = score >= 70 ? '#21d07a' : (score >= 40 ? '#d2d531' : '#db2323');
 
-            // Reset specific fields
             document.getElementById('detail-seasons').classList.add('hidden');
             document.getElementById('director-section').classList.add('hidden');
 
-            // Show View
             view.classList.remove('hidden');
             setTimeout(() => view.classList.add('active'), 10);
 
-            // Detailed Fetch
             const res = await fetch(`https://api.themoviedb.org/3/${type}/${movie.id}?api_key=${API_KEY}&language=es-ES`);
             const data = await res.json();
 
-            selectedMovie.details = data; // Store details
+            selectedMovie.details = data;
 
             document.getElementById('detail-runtime').innerText = (data.runtime || (data.episode_run_time?.[0]) || '?') + ' min';
             document.getElementById('detail-tagline').innerText = data.tagline ? `"${data.tagline}"` : '';
+
             const statusMap = { 'Released': 'Estrenada', 'Ended': 'Finalizada', 'Returning Series': 'En Emisión', 'Canceled': 'Cancelada', 'In Production': 'En Producción' };
             document.getElementById('fact-status').innerText = statusMap[data.status] || data.status;
-            document.getElementById('fact-companies').innerText = data.production_companies?.map(c => c.name).join(', ') || 'CineGram Original';
+
+            // Render Companies as Clickable
+            const companiesHTML = data.production_companies?.slice(0, 3).map(c => {
+                companyCache[c.id] = c; // Cache company data
+                return `<span onclick="openCompany(${c.id})" class="underline decoration-white/30 hover:text-white cursor-pointer">${c.name}</span>`;
+            }).join(', ') || 'CineGram Original';
+            document.getElementById('fact-companies').innerHTML = companiesHTML;
 
             if (type === 'tv') {
                 const s = document.getElementById('detail-seasons');
@@ -502,7 +566,6 @@
                 s.classList.remove('hidden');
             }
 
-            // Credits
             fetchCredits(movie.id, type);
         }
 
@@ -510,16 +573,18 @@
             const res = await fetch(`https://api.themoviedb.org/3/${type}/${id}/credits?api_key=${API_KEY}&language=es-ES`);
             const data = await res.json();
 
-            document.getElementById('cast-list').innerHTML = data.cast.slice(0, 10).map(p => `
-                 <div class="flex-shrink-0 w-24 snap-center">
-                    <div class="w-24 h-24 rounded-full overflow-hidden mb-2 border-2 border-white/10 mx-auto">
-                        <img class="w-full h-full object-cover" src="${p.profile_path ? 'https://image.tmdb.org/t/p/w185' + p.profile_path : 'https://ui-avatars.com/api/?name=' + p.name}">
+            document.getElementById('cast-list').innerHTML = data.cast.slice(0, 10).map(p => {
+                return `
+                    <div class="flex-shrink-0 w-24 snap-center cursor-pointer active:scale-95 transition-transform" onclick="openPerson(${p.id})">
+                        <div class="w-24 h-24 rounded-full overflow-hidden mb-2 border-2 border-white/10 mx-auto">
+                            <img class="w-full h-full object-cover" src="${p.profile_path ? 'https://image.tmdb.org/t/p/w185' + p.profile_path : 'https://ui-avatars.com/api/?name=' + p.name}">
+                        </div>
+                        <p class="text-[9px] text-center font-bold text-gray-300 truncate">${p.name}</p>
+                        <p class="text-[8px] text-center text-gray-500 truncate">${p.character}</p>
                     </div>
-                    <p class="text-[9px] text-center font-bold text-gray-300 truncate">${p.name}</p>
-                </div>
-            `).join('');
+                 `;
+            }).join('');
 
-            // Director
             if (type === 'movie') {
                 const director = data.crew.find(p => p.job === 'Director');
                 if (director) fetchDirectorMovies(director.id, director.name);
@@ -527,11 +592,13 @@
         }
 
         async function fetchDirectorMovies(id, name) {
+            // Can be clicked to open Person View instead of inline list
+            document.getElementById('director-title').innerHTML = `Más de <span onclick="openPerson(${id})" class="underline cursor-pointer hover:text-white">${name}</span>`;
+
             const res = await fetch(`https://api.themoviedb.org/3/discover/movie?api_key=${API_KEY}&with_crew=${id}&sort_by=popularity.desc&language=es-ES`);
             const data = await res.json();
             if (!data.results.length) return;
 
-            document.getElementById('director-title').innerText = `Más de ${name}`;
             document.getElementById('director-section').classList.remove('hidden');
             document.getElementById('director-list').innerHTML = data.results.slice(0, 10).map(m => createCard(m)).join('');
         }
@@ -542,6 +609,89 @@
         }
 
         function openHeroDetail() { if (window.heroMovie) openDetail(window.heroMovie); }
+
+        // --- Person View ---
+        async function openPerson(id) {
+            const view = document.getElementById('person-view');
+            view.classList.remove('hidden');
+            setTimeout(() => view.classList.add('active'), 10);
+
+            // Reset
+            document.getElementById('person-name').innerText = 'Cargando...';
+            document.getElementById('person-credits').innerHTML = '<div class="w-full text-center text-xs text-gray-500">Cargando filmografía...</div>';
+
+            const [details, credits] = await Promise.all([
+                fetch(`https://api.themoviedb.org/3/person/${id}?api_key=${API_KEY}&language=es-ES`).then(r => r.json()),
+                fetch(`https://api.themoviedb.org/3/person/${id}/combined_credits?api_key=${API_KEY}&language=es-ES`).then(r => r.json())
+            ]);
+
+            document.getElementById('person-name').innerText = details.name;
+            document.getElementById('person-img').src = details.profile_path
+                ? `https://image.tmdb.org/t/p/w185${details.profile_path}`
+                : `https://ui-avatars.com/api/?name=${details.name}`;
+
+            document.getElementById('person-role').innerText = details.known_for_department;
+            document.getElementById('person-birth').innerText = details.birthday ? `🎂 ${details.birthday.split('-')[0]}` : '';
+            document.getElementById('person-place').innerText = details.place_of_birth || '';
+            document.getElementById('person-bio').innerText = details.biography || "Sin biografía disponible en español.";
+
+            // Sort by popularity
+            const works = credits.cast.sort((a, b) => b.popularity - a.popularity).slice(0, 20);
+            document.getElementById('person-credits').innerHTML = works.map(m => createCard(m)).join('');
+        }
+
+        function closePerson() {
+            document.getElementById('person-view').classList.remove('active');
+            setTimeout(() => document.getElementById('person-view').classList.add('hidden'), 300);
+        }
+
+        // --- Company View ---
+        async function openCompany(id) {
+            const view = document.getElementById('company-view');
+            view.classList.remove('hidden');
+            setTimeout(() => view.classList.add('active'), 10);
+
+            // Reset
+            document.getElementById('company-name').innerText = 'Cargando...';
+            document.getElementById('company-logo').src = '';
+
+            const [details, best, list] = await Promise.all([
+                fetch(`https://api.themoviedb.org/3/company/${id}?api_key=${API_KEY}`).then(r => r.json()),
+                fetch(`https://api.themoviedb.org/3/discover/movie?api_key=${API_KEY}&with_companies=${id}&sort_by=revenue.desc`).then(r => r.json()),
+                fetch(`https://api.themoviedb.org/3/discover/movie?api_key=${API_KEY}&with_companies=${id}&sort_by=popularity.desc&language=es-ES`).then(r => r.json())
+            ]);
+
+            document.getElementById('company-name').innerText = details.name;
+            if (details.logo_path) {
+                document.getElementById('company-logo').src = `https://image.tmdb.org/t/p/w200${details.logo_path}`;
+                document.getElementById('company-logo').style.display = 'block';
+            } else {
+                document.getElementById('company-logo').style.display = 'none';
+            }
+
+            // Top Movie
+            if (best.results[0]) {
+                const m = best.results[0];
+                document.getElementById('company-top-movie').innerHTML = `
+                    <div class="relative w-full h-32 rounded-xl overflow-hidden border border-white/10 cursor-pointer" onclick="openDetailById(${m.id})">
+                        <img src="https://image.tmdb.org/t/p/w780${m.backdrop_path}" class="w-full h-full object-cover opacity-60">
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <h2 class="text-xl font-black text-white text-center shadow-black drop-shadow-lg px-4">${m.title}</h2>
+                        </div>
+                    </div>
+                `;
+                // Ensure it's in cache
+                movieCache[m.id] = m;
+            }
+
+            // Catalog
+            document.getElementById('company-catalog').innerHTML = list.results.map(m => createCard(m)).join('');
+        }
+
+        function closeCompany() {
+            document.getElementById('company-view').classList.remove('active');
+            setTimeout(() => document.getElementById('company-view').classList.add('hidden'), 300);
+        }
 
         // --- Player ---
         function playInternal() {
@@ -561,11 +711,10 @@
         function closePlayer() {
             const player = document.getElementById('player-view');
             player.classList.add('hidden');
-            document.getElementById('video-iframe').src = ''; // Stop video
+            document.getElementById('video-iframe').src = '';
         }
 
         function playExternal() {
-            // Telegram Channel Link
             tg.openTelegramLink('https://t.me/+Sc3SFX_enMk5NTUx');
         }
 
