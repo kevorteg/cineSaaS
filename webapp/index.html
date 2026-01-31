@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CINEGRAM - Mini App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap');
+
+        :root {
+            --cine-bg: #0b0e11;
+            --cine-red: #e50914;
+            --cine-card-bg: #1a1d23;
+            --tmdb-green: #21d07a;
+        }
+
+        /* Ocultar scrollbars globalmente manteniendo funcionalidad */
+        * {
+            scrollbar-width: none;
+            /* Firefox */
+            -ms-overflow-style: none;
+            /* IE/Edge */
+        }
+
+        *::-webkit-scrollbar {
+            display: none;
+            /* Chrome/Safari */
+        }
+
+        body {
+            background-color: var(--cine-bg);
+            color: white;
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .hero-gradient {
+            background: linear-gradient(to top, var(--cine-bg) 5%, transparent 70%),
+                linear-gradient(to right, var(--cine-bg) 0%, transparent 40%);
+        }
+
+        .rating-badge {
+            background: rgba(8, 28, 34, 0.9);
+            font-size: 10px;
+            width: 34px;
+            height: 34px;
+        }
+
+        #detail-view {
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: translateX(100%);
+            z-index: 100;
+        }
+
+        #detail-view.active {
+            transform: translateX(0);
+        }
+
+        .detail-header-gradient {
+            background: linear-gradient(to bottom, transparent, var(--cine-bg));
+        }
+
+        .fact-label {
+            color: #9ca3af;
+            font-size: 0.7rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .btn-red {
+            background-color: var(--cine-red);
+            transition: transform 0.1s;
+        }
+
+        .btn-red:active {
+            transform: scale(0.96);
+        }
+
+        .score-circle {
+            position: relative;
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            background: #081c22;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            border: 3px solid #204529;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        iframe {
+            border-radius: 12px;
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Efecto de carga shimmer */
+        .shimmer {
+            background: linear-gradient(90deg, #1a1d23 25%, #2a2d35 50%, #1a1d23 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite linear;
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: 200% 0;
+            }
+
+            100% {
+                background-position: -200% 0;
+            }
+        }
+    </style>
+</head>
+
+<body class="select-none overflow-y-auto">
+
+    <!-- Nav Bar -->
+    <nav
+        class="fixed top-0 w-full z-[80] bg-[#0b0e11]/95 backdrop-blur-md px-4 py-3 flex items-center justify-between border-b border-white/5">
+        <div class="flex items-center gap-2">
+            <div class="bg-red-600 text-white px-2 py-0.5 rounded font-black italic tracking-tighter text-lg">C</div>
+            <h1 class="font-extrabold text-xl tracking-tighter uppercase italic">CINE<span
+                    class="text-red-600">GRAM</span></h1>
+        </div>
+        <div class="flex gap-4 items-center">
+            <div
+                class="w-8 h-8 rounded-full border-2 border-red-600 overflow-hidden bg-gray-800 shadow-lg shadow-red-600/20">
+                <img src="https://ui-avatars.com/api/?name=User&background=e50914&color=fff" alt="Perfil">
+            </div>
+        </div>
+    </nav>
+
+    <!-- Home View -->
+    <main id="home-view" class="pt-14 pb-12">
+        <!-- Hero Section -->
+        <section id="hero" class="relative w-full h-[60vh] overflow-hidden cursor-pointer" onclick="openHeroDetail()">
+            <img id="hero-img" class="w-full h-full object-cover" src="" alt="">
+            <div class="absolute inset-0 hero-gradient"></div>
+            <div class="absolute bottom-12 left-4 right-4">
+                <p class="text-red-600 text-[10px] font-black tracking-[0.2em] mb-2 uppercase">RECOMENDADO PARA TI</p>
+                <h1 id="hero-title" class="text-4xl font-black mb-4 leading-none italic uppercase tracking-tighter">
+                    Cargando...</h1>
+                <div class="flex gap-3">
+                    <button
+                        class="btn-red text-white px-8 py-3 rounded-lg font-black text-xs flex items-center gap-2 shadow-xl shadow-red-600/30">
+                        <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                            <path d="M8 5v14l11-7z" />
+                        </svg> VER AHORA
+                    </button>
+                    <button
+                        class="bg-white/10 backdrop-blur-md text-white px-4 py-3 rounded-lg font-bold text-xs border border-white/10 hover:bg-white/20 transition-all">+</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Rows Container -->
+        <div id="movie-rows" class="space-y-10 mt-6 px-4">
+            <!-- Shimmer placeholders -->
+            <div class="space-y-4">
+                <div class="h-4 w-32 shimmer rounded"></div>
+                <div class="flex gap-4 overflow-hidden">
+                    <div class="w-32 h-48 shimmer rounded-lg flex-shrink-0"></div>
+                    <div class="w-32 h-48 shimmer rounded-lg flex-shrink-0"></div>
+                    <div class="w-32 h-48 shimmer rounded-lg flex-shrink-0"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Independent Detail View -->
+    <section id="detail-view" class="fixed inset-0 bg-[#0b0e11] overflow-y-auto hidden">
+        <!-- Header Controls -->
+        <div class="fixed top-0 left-0 w-full z-[110] p-4 flex justify-between pointer-events-none">
+            <button onclick="closeDetail()"
+                class="pointer-events-auto bg-black/60 p-2 rounded-full backdrop-blur-xl border border-white/10">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path d="M15 19l-7-7 7-7" stroke-width="3" />
+                </svg>
+            </button>
+        </div>
+
+        <div class="relative pb-24">
+            <!-- Backdrop -->
+            <div class="relative h-[45vh]">
+                <img id="detail-backdrop" class="w-full h-full object-cover" src="" alt="">
+                <div class="absolute inset-0 detail-header-gradient"></div>
+            </div>
+
+            <!-- Content -->
+            <div class="px-5 -mt-28 relative z-10">
+                <!-- Title Card -->
+                <div class="flex gap-5 items-end mb-8">
+                    <div class="w-32 flex-shrink-0 shadow-2xl rounded-xl overflow-hidden border border-white/10">
+                        <img id="detail-poster" class="w-full" src="" alt="">
+                    </div>
+                    <div class="flex-1 pb-2">
+                        <h2 id="detail-title" class="text-3xl font-black leading-tight mb-2 tracking-tighter"></h2>
+                        <div class="flex flex-wrap items-center gap-3 text-[11px] font-bold text-gray-400">
+                            <span id="detail-year" class="bg-red-600/20 text-red-500 px-2 py-0.5 rounded"></span>
+                            <span>•</span>
+                            <span id="detail-genres" class="text-gray-300"></span>
+                            <span>•</span>
+                            <span id="detail-runtime"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Score & Trailer Row -->
+                <div class="flex items-center gap-6 mb-10 bg-white/5 p-4 rounded-2xl border border-white/10">
+                    <div class="flex items-center gap-3">
+                        <div id="detail-score" class="score-circle">0%</div>
+                        <div class="text-[9px] font-black leading-tight uppercase tracking-widest text-gray-400">
+                            User<br>Score</div>
+                    </div>
+                    <div class="h-10 w-[1px] bg-white/10"></div>
+                    <button id="trailer-btn"
+                        class="flex-1 flex items-center justify-center gap-2 text-sm font-black uppercase tracking-tighter hover:text-red-500 transition-colors">
+                        <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                            <path d="M8 5v14l11-7z" />
+                        </svg> Tráiler
+                    </button>
+                </div>
+
+                <!-- Main Action Button -->
+                <button onclick="playNow()"
+                    class="w-full btn-red h-16 rounded-2xl font-black text-xl flex items-center justify-center gap-3 mb-10 shadow-2xl shadow-red-600/40 uppercase italic">
+                    <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M8 5v14l11-7z" />
+                    </svg> Reproducir
+                </button>
+
+                <!-- Info Sections -->
+                <div class="space-y-10">
+                    <!-- Resumen -->
+                    <div>
+                        <p id="detail-tagline" class="italic text-gray-400 text-sm mb-4 border-l-2 border-red-600 pl-4">
+                        </p>
+                        <h3 class="text-sm font-black mb-3 uppercase tracking-[0.2em] text-red-600">Sinopsis</h3>
+                        <p id="detail-overview" class="text-sm text-gray-300 leading-relaxed font-medium"></p>
+                    </div>
+
+                    <!-- YouTube Section -->
+                    <div id="trailer-container" class="hidden">
+                        <h3 class="text-sm font-black mb-4 uppercase tracking-[0.2em] text-red-600">Tráiler Oficial</h3>
+                        <div id="youtube-player"></div>
+                    </div>
+
+                    <!-- Datos Técnicos -->
+                    <div class="grid grid-cols-2 gap-4 bg-[#1a1d23] p-5 rounded-2xl border border-white/5">
+                        <div class="space-y-1">
+                            <p class="fact-label">Nombre Original</p>
+                            <p id="fact-name" class="text-xs font-bold text-white truncate">-</p>
+                        </div>
+                        <div class="space-y-1">
+                            <p class="fact-label">Estado</p>
+                            <p id="fact-status" class="text-xs font-bold text-white">-</p>
+                        </div>
+                        <div class="space-y-1">
+                            <p class="fact-label">Idioma</p>
+                            <p id="fact-lang" class="text-xs font-bold text-white uppercase">-</p>
+                        </div>
+                        <div class="space-y-1">
+                            <p class="fact-label">Presupuesto</p>
+                            <p id="fact-budget" class="text-xs font-bold text-white">-</p>
+                        </div>
+                    </div>
+
+                    <!-- Reparto -->
+                    <div>
+                        <div class="flex justify-between items-center mb-5">
+                            <h3 class="text-sm font-black uppercase tracking-[0.2em] text-red-600">Reparto Principal
+                            </h3>
+                        </div>
+                        <div id="cast-list" class="flex gap-4 overflow-x-auto pb-4">
+                            <!-- Cast cards -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        tg.ready();
+
+        const API_KEY = '3f861f1e68ac707e552765fb93d6d420';
+        const rowsContainer = document.getElementById('movie-rows');
+        let selectedMovie = null;
+        let heroMovie = null;
+
+        // Inicializar app
+        async function init() {
+            rowsContainer.innerHTML = ''; // Limpiar loaders
+            await fetchRow("Tendencias Semanales", "/trending/all/week");
+            await fetchRow("Lo Más Popular", "/movie/popular");
+            await fetchRow("Series Recomendadas", "/tv/top_rated");
+            await fetchRow("Próximamente", "/movie/upcoming");
+        }
+
+        async function fetchRow(title, endpoint) {
+            try {
+                const res = await fetch(`https://api.themoviedb.org/3${endpoint}?api_key=${API_KEY}&language=es-ES`);
+                const data = await res.json();
+                if (!heroMovie && data.results[0]) {
+                    heroMovie = data.results[0];
+                    updateHero(heroMovie);
+                }
+                renderRow(title, data.results);
+            } catch (e) { console.error("Error fetching row:", e); }
+        }
+
+        function updateHero(movie) {
+            document.getElementById('hero-img').src = `https://image.tmdb.org/t/p/original${movie.backdrop_path}`;
+            document.getElementById('hero-title').innerText = movie.title || movie.name;
+        }
+
+        function renderRow(title, movies) {
+            const section = document.createElement('section');
+            section.innerHTML = `
+                <h2 class="text-[11px] font-black mb-4 text-gray-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                    <span class="w-1 h-3 bg-red-600 rounded-full"></span>${title}
+                </h2>
+                <div class="flex gap-4 overflow-x-auto pb-2">
+                    ${movies.map(m => {
+                const score = Math.round(m.vote_average * 10);
+                const color = score >= 70 ? '#21d07a' : (score >= 40 ? '#d2d531' : '#db2323');
+                return `
+                            <div class="flex-shrink-0 w-32 relative active:scale-95 transition-transform" onclick='openDetail(${JSON.stringify(m).replace(/'/g, "&apos;")})'>
+                                <div class="aspect-[2/3] rounded-xl overflow-hidden bg-gray-800 shadow-2xl border border-white/5">
+                                    <img src="https://image.tmdb.org/t/p/w342${m.poster_path}" class="w-full h-full object-cover" loading="lazy">
+                                </div>
+                                <div class="absolute -bottom-2 -left-1 rating-badge rounded-full flex items-center justify-center font-black text-white shadow-2xl border-2" style="border-color: ${color}">
+                                    ${score}<span class="text-[6px]">%</span>
+                                </div>
+                            </div>
+                        `;
+            }).join('')}
+                </div>
+            `;
+            rowsContainer.appendChild(section);
+        }
+
+        async function openDetail(movie) {
+            selectedMovie = movie;
+            const detailView = document.getElementById('detail-view');
+            const type = movie.title ? 'movie' : 'tv';
+
+            // UI Base
+            document.getElementById('detail-backdrop').src = `https://image.tmdb.org/t/p/w780${movie.backdrop_path}`;
+            document.getElementById('detail-poster').src = `https://image.tmdb.org/t/p/w342${movie.poster_path}`;
+            document.getElementById('detail-title').innerText = movie.title || movie.name;
+            document.getElementById('detail-year').innerText = (movie.release_date || movie.first_air_date || '2024').split('-')[0];
+            document.getElementById('detail-overview').innerText = movie.overview || "No hay un resumen disponible en este momento.";
+
+            // Score circle
+            const score = Math.round(movie.vote_average * 10);
+            const scoreCircle = document.getElementById('detail-score');
+            scoreCircle.innerText = score + '%';
+            scoreCircle.style.borderColor = score >= 70 ? '#21d07a' : (score >= 40 ? '#d2d531' : '#db2323');
+
+            // Reset trailer
+            document.getElementById('trailer-container').classList.add('hidden');
+            document.getElementById('youtube-player').innerHTML = '';
+
+            // Show UI
+            detailView.classList.remove('hidden');
+            setTimeout(() => detailView.classList.add('active'), 50);
+
+            // Cargar datos extra
+            fetchExtraDetails(movie.id, type);
+            fetchCredits(movie.id, type);
+            fetchTrailer(movie.id, type);
+        }
+
+        async function fetchExtraDetails(id, type) {
+            const res = await fetch(`https://api.themoviedb.org/3/${type}/${id}?api_key=${API_KEY}&language=es-ES`);
+            const data = await res.json();
+
+            document.getElementById('detail-tagline').innerText = data.tagline ? `"${data.tagline}"` : "La historia comienza aquí.";
+            document.getElementById('detail-runtime').innerText = (data.runtime || data.episode_run_time?.[0] || '90') + ' min';
+            document.getElementById('detail-genres').innerText = data.genres.map(g => g.name).slice(0, 2).join(', ');
+
+            // Facts
+            document.getElementById('fact-name').innerText = data.original_title || data.original_name || '-';
+            document.getElementById('fact-status').innerText = data.status || 'Estrenado';
+            document.getElementById('fact-lang').innerText = data.original_language || 'en';
+            document.getElementById('fact-budget').innerText = data.budget ? `$${data.budget.toLocaleString()}` : 'No disponible';
+        }
+
+        async function fetchTrailer(id, type) {
+            const res = await fetch(`https://api.themoviedb.org/3/${type}/${id}/videos?api_key=${API_KEY}&language=es-ES`);
+            const data = await res.json();
+            const trailer = data.results.find(v => v.type === 'Trailer' && v.site === 'YouTube');
+
+            const btn = document.getElementById('trailer-btn');
+            if (trailer) {
+                btn.style.opacity = "1";
+                btn.onclick = () => {
+                    document.getElementById('trailer-container').classList.remove('hidden');
+                    document.getElementById('youtube-player').innerHTML = `<iframe src="https://www.youtube.com/embed/${trailer.key}?autoplay=1" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
+                    document.getElementById('trailer-container').scrollIntoView({ behavior: 'smooth' });
+                };
+            } else {
+                btn.style.opacity = "0.3";
+                btn.onclick = null;
+            }
+        }
+
+        async function fetchCredits(id, type) {
+            const res = await fetch(`https://api.themoviedb.org/3/${type}/${id}/credits?api_key=${API_KEY}&language=es-ES`);
+            const data = await res.json();
+            const list = document.getElementById('cast-list');
+            list.innerHTML = data.cast.slice(0, 15).map(person => `
+                <div class="flex-shrink-0 w-28 bg-[#1a1d23] rounded-2xl overflow-hidden border border-white/5 shadow-xl">
+                    <img class="w-full h-32 object-cover" 
+                         src="${person.profile_path ? 'https://image.tmdb.org/t/p/w185' + person.profile_path : 'https://ui-avatars.com/api/?name=' + person.name + '&background=333&color=fff'}">
+                    <div class="p-3">
+                        <p class="text-[10px] font-black truncate text-white uppercase">${person.name}</p>
+                        <p class="text-[9px] text-gray-500 truncate font-semibold">${person.character}</p>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function closeDetail() {
+            const detailView = document.getElementById('detail-view');
+            detailView.classList.remove('active');
+            setTimeout(() => {
+                detailView.classList.add('hidden');
+                document.getElementById('youtube-player').innerHTML = ''; // Parar trailer
+            }, 400);
+        }
+
+        function openHeroDetail() { if (heroMovie) openDetail(heroMovie); }
+
+        function playNow() {
+            if (!selectedMovie) return;
+            tg.HapticFeedback.notificationOccurred('success');
+            const payload = {
+                action: "reproducir",
+                id: selectedMovie.id,
+                title: selectedMovie.title || selectedMovie.name,
+                type: selectedMovie.title ? "movie" : "tv"
+            };
+            tg.sendData(JSON.stringify(payload));
+            tg.close();
+        }
+
+        init();
+    </script>
+</body>
+
+</html>
