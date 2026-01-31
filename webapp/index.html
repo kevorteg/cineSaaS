@@ -190,6 +190,15 @@
                 </div>
             </div>
         </div>
+
+        <!-- Footer -->
+        <footer class="mt-12 mb-8 text-center px-6">
+            <p class="text-xs text-gray-500 mb-2">Hecho para la comunidad de CineGram.</p>
+            <button onclick="playExternal()"
+                class="text-[10px] font-bold text-red-500 uppercase tracking-widest hover:underline">
+                ¿Falta alguna peli? Pídela aquí
+            </button>
+        </footer>
     </main>
 
     <!-- Search Overlay -->
@@ -315,7 +324,7 @@
             </button>
             <img src="./logo.png" class="h-6 opacity-50">
         </div>
-        <div class="flex-1 flex items-center justify-center bg-black relative">
+        <div class="flex-1 flex flex-col items-center justify-center bg-black relative">
             <!-- Iframe Container that maintains 16:9 but fits screen -->
             <div class="w-full aspect-video bg-[#111]">
                 <iframe id="video-iframe" src="" allowfullscreen allow="autoplay; encrypted-media"></iframe>
@@ -324,9 +333,14 @@
             <div class="absolute inset-0 flex items-center justify-center pointer-events-none" id="player-loader">
                 <div class="w-10 h-10 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div>
             </div>
-        </div>
-        <div class="p-6 text-center text-gray-500 text-xs">
-            <p>Si el video no carga, prueba la opción "Ver en Canal".</p>
+
+            <!-- Disclaimer -->
+            <div class="p-6 text-center">
+                <p class="text-gray-500 text-[10px] leading-relaxed max-w-xs mx-auto">
+                    ⚠️ <b>Nota:</b> El contenido es externo y podría estar en su idioma original (Inglés).
+                    <br>Para contenido en Latino garantizado, usa el botón <b>"Ver en Canal"</b>.
+                </p>
+            </div>
         </div>
     </section>
 
@@ -337,11 +351,10 @@
 
         // Constants
         const API_KEY = '3f861f1e68ac707e552765fb93d6d420';
-        // const EMBED_BASE = 'https://vidsrc.xyz/embed'; 
-        // Using a safe embed placeholder. In production, this should be configured.
         const EMBED_BASE = 'https://vidsrc.xyz/embed';
 
-        // State
+        // State & Cache
+        const movieCache = {}; // Fix for search clicks
         let selectedMovie = null;
         let searchTimeout = null;
 
@@ -369,6 +382,7 @@
         }
 
         function updateHero(m) {
+            movieCache[m.id] = m; // Cache
             document.getElementById('hero-img').src = `https://image.tmdb.org/t/p/original${m.backdrop_path}`;
             document.getElementById('hero-title').innerText = m.title || m.name;
             window.heroMovie = m;
@@ -390,14 +404,15 @@
         }
 
         function createCard(m) {
+            movieCache[m.id] = m; // Store in global cache
+
             if (!m.poster_path) return '';
             const score = Math.round(m.vote_average * 10);
             const color = score >= 70 ? '#21d07a' : (score >= 40 ? '#d2d531' : '#db2323');
-            // Escape quote for JSON in onclick
-            const json = JSON.stringify(m).replace(/'/g, "&apos;").replace(/"/g, "&quot;");
 
+            // Use ID-based click handler (Robust)
             return `
-                <div class="flex-shrink-0 w-32 relative active:scale-95 transition-transform cursor-pointer snap-center" onclick='openDetail(${json})'>
+                <div class="flex-shrink-0 w-32 relative active:scale-95 transition-transform cursor-pointer snap-center" onclick="openDetailById(${m.id})">
                     <div class="aspect-[2/3] rounded-xl overflow-hidden bg-gray-800 shadow-2xl border border-white/5">
                         <img src="https://image.tmdb.org/t/p/w342${m.poster_path}" class="w-full h-full object-cover" loading="lazy">
                     </div>
@@ -436,6 +451,13 @@
         });
 
         // --- Details Logic ---
+
+        // New: Helper to open by ID
+        function openDetailById(id) {
+            const movie = movieCache[id];
+            if (movie) openDetail(movie);
+        }
+
         async function openDetail(movie) {
             selectedMovie = movie;
             const view = document.getElementById('detail-view');
@@ -526,17 +548,12 @@
             const type = selectedMovie.title ? 'movie' : 'tv';
             const id = selectedMovie.id;
 
-            // Construct Embed URL
             const url = `${EMBED_BASE}/${type}/${id}`;
-            // Or use 'https://vidsrc.xyz/embed/movie/123' format
-
             const player = document.getElementById('player-view');
             const iframe = document.getElementById('video-iframe');
 
             iframe.src = url;
             player.classList.remove('hidden');
-
-            // Hide Loader when iframe loads
             iframe.onload = () => document.getElementById('player-loader').style.display = 'none';
         }
 

@@ -82,5 +82,11 @@ Have a bot idea? Interested in custom automation?
 
 **Contact me on Telegram:** [@KrimsonByte](https://t.me/KrimsonByte)
 
----
-*Built with precision. No bloat.*
+## 🤝 Comunidad y Soporte
+
+Este proyecto está vivo gracias a la comunidad.
+- **Canal Oficial**: [Unirse a Telegram](https://t.me/+Sc3SFX_enMk5NTUx)
+- **Pedir Películas**: Usa la opción "Ver en Canal" dentro de la App o escribe en el grupo.
+- **Reportar Errores**: Si algo no funciona, avísanos en el canal.
+
+Hecho con ❤️ para **CineGram**.
