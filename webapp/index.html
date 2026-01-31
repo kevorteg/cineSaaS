@@ -264,7 +264,7 @@
                             User<br>Score</div>
                     </div>
                     <div class="h-10 w-[1px] bg-white/10"></div>
-                    <div class="flex-1 text-xs text-gray-400 font-medium">
+                    <div class="flex-1 text-xs text-gray-400 font-medium min-w-0">
                         <p id="fact-status" class="text-white font-bold mb-1">-</p>
                         <p id="fact-companies" class="truncate">-</p>
                     </div>
@@ -492,8 +492,9 @@
 
             document.getElementById('detail-runtime').innerText = (data.runtime || (data.episode_run_time?.[0]) || '?') + ' min';
             document.getElementById('detail-tagline').innerText = data.tagline ? `"${data.tagline}"` : '';
-            document.getElementById('fact-status').innerText = data.status;
-            document.getElementById('fact-companies').innerText = data.production_companies?.map(c => c.name).slice(0, 2).join(', ');
+            const statusMap = { 'Released': 'Estrenada', 'Ended': 'Finalizada', 'Returning Series': 'En Emisión', 'Canceled': 'Cancelada', 'In Production': 'En Producción' };
+            document.getElementById('fact-status').innerText = statusMap[data.status] || data.status;
+            document.getElementById('fact-companies').innerText = data.production_companies?.map(c => c.name).join(', ') || 'CineGram Original';
 
             if (type === 'tv') {
                 const s = document.getElementById('detail-seasons');
