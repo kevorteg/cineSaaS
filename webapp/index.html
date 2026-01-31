@@ -17,17 +17,14 @@
             --tmdb-green: #21d07a;
         }
 
-        /* Ocultar scrollbars globalmente manteniendo funcionalidad */
+        /* Ocultar scrollbars */
         * {
             scrollbar-width: none;
-            /* Firefox */
             -ms-overflow-style: none;
-            /* IE/Edge */
         }
 
         *::-webkit-scrollbar {
             display: none;
-            /* Chrome/Safari */
         }
 
         body {
@@ -103,7 +100,34 @@
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
         }
 
-        /* Efecto de carga shimmer */
+        /* Marquee Animation */
+        @keyframes scroll {
+            0% {
+                transform: translateX(0);
+            }
+
+            100% {
+                transform: translateX(-50%);
+            }
+        }
+
+        .marquee-container {
+            display: flex;
+            overflow: hidden;
+            width: 100%;
+            mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
+        }
+
+        .marquee-content {
+            display: flex;
+            gap: 1rem;
+            animation: scroll linear infinite;
+        }
+
+        .marquee-content:hover {
+            animation-play-state: paused;
+        }
+
         .shimmer {
             background: linear-gradient(90deg, #1a1d23 25%, #2a2d35 50%, #1a1d23 75%);
             background-size: 200% 100%;
@@ -131,10 +155,11 @@
             <img src="./logo.png" alt="CineGram Logo" class="h-8 w-auto object-contain">
         </div>
         <div class="flex gap-4 items-center">
-            <div
-                class="w-8 h-8 rounded-full border-2 border-red-600 overflow-hidden bg-gray-800 shadow-lg shadow-red-600/20">
-                <img src="https://ui-avatars.com/api/?name=User&background=e50914&color=fff" alt="Perfil">
-            </div>
+            <button onclick="showProfile()"
+                class="w-8 h-8 rounded-full border-2 border-red-600 overflow-hidden bg-gray-800 shadow-lg shadow-red-600/20 active:scale-95 transition-transform">
+                <img src="https://ui-avatars.com/api/?name=User&background=e50914&color=fff" id="user-avatar"
+                    alt="Perfil">
+            </button>
         </div>
     </nav>
 
@@ -162,12 +187,11 @@
         </section>
 
         <!-- Rows Container -->
-        <div id="movie-rows" class="space-y-10 mt-6 px-4">
-            <!-- Shimmer placeholders -->
-            <div class="space-y-4">
+        <div id="movie-rows" class="space-y-8 mt-6">
+            <!-- Loader -->
+            <div class="px-4 space-y-4">
                 <div class="h-4 w-32 shimmer rounded"></div>
                 <div class="flex gap-4 overflow-hidden">
-                    <div class="w-32 h-48 shimmer rounded-lg flex-shrink-0"></div>
                     <div class="w-32 h-48 shimmer rounded-lg flex-shrink-0"></div>
                     <div class="w-32 h-48 shimmer rounded-lg flex-shrink-0"></div>
                 </div>
@@ -260,16 +284,16 @@
                             <p id="fact-name" class="text-xs font-bold text-white truncate">-</p>
                         </div>
                         <div class="space-y-1">
-                            <p class="fact-label">Estado</p>
-                            <p id="fact-status" class="text-xs font-bold text-white">-</p>
+                            <p class="fact-label">Estreno</p>
+                            <p id="fact-date" class="text-xs font-bold text-white">-</p>
                         </div>
                         <div class="space-y-1">
                             <p class="fact-label">Idioma</p>
                             <p id="fact-lang" class="text-xs font-bold text-white uppercase">-</p>
                         </div>
                         <div class="space-y-1">
-                            <p class="fact-label">Presupuesto</p>
-                            <p id="fact-budget" class="text-xs font-bold text-white">-</p>
+                            <p class="fact-label">Productoras</p>
+                            <p id="fact-companies" class="text-xs font-bold text-white truncate">-</p>
                         </div>
                     </div>
 
@@ -279,9 +303,14 @@
                             <h3 class="text-sm font-black uppercase tracking-[0.2em] text-red-600">Reparto Principal
                             </h3>
                         </div>
-                        <div id="cast-list" class="flex gap-4 overflow-x-auto pb-4">
-                            <!-- Cast cards -->
-                        </div>
+                        <div id="cast-list" class="flex gap-4 overflow-x-auto pb-4"></div>
+                    </div>
+
+                    <!-- Director's Movies -->
+                    <div id="director-section" class="hidden">
+                        <h3 id="director-title" class="text-sm font-black uppercase tracking-[0.2em] text-red-600 mb-5">
+                            Más del Director</h3>
+                        <div id="director-list" class="flex gap-4 overflow-x-auto pb-4"></div>
                     </div>
                 </div>
             </div>
@@ -293,14 +322,19 @@
         tg.expand();
         tg.ready();
 
+        // Update User Avatar
+        if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+            const user = tg.initDataUnsafe.user;
+            document.getElementById('user-avatar').src = user.photo_url || `https://ui-avatars.com/api/?name=${user.first_name}&background=e50914&color=fff`;
+        }
+
         const API_KEY = '3f861f1e68ac707e552765fb93d6d420';
         const rowsContainer = document.getElementById('movie-rows');
         let selectedMovie = null;
         let heroMovie = null;
 
-        // Inicializar app
         async function init() {
-            rowsContainer.innerHTML = ''; // Limpiar loaders
+            rowsContainer.innerHTML = '';
             await fetchRow("Tendencias Semanales", "/trending/all/week");
             await fetchRow("Lo Más Popular", "/movie/popular");
             await fetchRow("Series Recomendadas", "/tv/top_rated");
@@ -326,25 +360,35 @@
 
         function renderRow(title, movies) {
             const section = document.createElement('section');
+            section.className = "pl-4";
+
+            // Create cards HTML
+            const cardsHtml = movies.map(m => {
+                const score = Math.round(m.vote_average * 10);
+                const color = score >= 70 ? '#21d07a' : (score >= 40 ? '#d2d531' : '#db2323');
+                return `
+                    <div class="flex-shrink-0 w-32 relative active:scale-95 transition-transform cursor-pointer" onclick='openDetail(${JSON.stringify(m).replace(/'/g, "&apos;")})'>
+                        <div class="aspect-[2/3] rounded-xl overflow-hidden bg-gray-800 shadow-2xl border border-white/5">
+                            <img src="https://image.tmdb.org/t/p/w342${m.poster_path}" class="w-full h-full object-cover" loading="lazy">
+                        </div>
+                        <div class="absolute -bottom-2 -left-1 rating-badge rounded-full flex items-center justify-center font-black text-white shadow-2xl border-2" style="border-color: ${color}">
+                            ${score}<span class="text-[6px]">%</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Marquee Structure: Container -> Content -> Cards (duplicated)
+            const duration = 30 + Math.random() * 30; // 30s to 60s
             section.innerHTML = `
                 <h2 class="text-[11px] font-black mb-4 text-gray-400 uppercase tracking-[0.2em] flex items-center gap-2">
                     <span class="w-1 h-3 bg-red-600 rounded-full"></span>${title}
                 </h2>
-                <div class="flex gap-4 overflow-x-auto pb-2">
-                    ${movies.map(m => {
-                const score = Math.round(m.vote_average * 10);
-                const color = score >= 70 ? '#21d07a' : (score >= 40 ? '#d2d531' : '#db2323');
-                return `
-                            <div class="flex-shrink-0 w-32 relative active:scale-95 transition-transform" onclick='openDetail(${JSON.stringify(m).replace(/'/g, "&apos;")})'>
-                                <div class="aspect-[2/3] rounded-xl overflow-hidden bg-gray-800 shadow-2xl border border-white/5">
-                                    <img src="https://image.tmdb.org/t/p/w342${m.poster_path}" class="w-full h-full object-cover" loading="lazy">
-                                </div>
-                                <div class="absolute -bottom-2 -left-1 rating-badge rounded-full flex items-center justify-center font-black text-white shadow-2xl border-2" style="border-color: ${color}">
-                                    ${score}<span class="text-[6px]">%</span>
-                                </div>
-                            </div>
-                        `;
-            }).join('')}
+                <div class="marquee-container">
+                     <div class="marquee-content" style="animation-duration: ${duration}s">
+                        ${cardsHtml}
+                        ${cardsHtml} <!-- Duplicate for infinite scroll -->
+                     </div>
                 </div>
             `;
             rowsContainer.appendChild(section);
@@ -362,21 +406,22 @@
             document.getElementById('detail-year').innerText = (movie.release_date || movie.first_air_date || '2024').split('-')[0];
             document.getElementById('detail-overview').innerText = movie.overview || "No hay un resumen disponible en este momento.";
 
-            // Score circle
+            // Score
             const score = Math.round(movie.vote_average * 10);
             const scoreCircle = document.getElementById('detail-score');
             scoreCircle.innerText = score + '%';
             scoreCircle.style.borderColor = score >= 70 ? '#21d07a' : (score >= 40 ? '#d2d531' : '#db2323');
 
-            // Reset trailer
+            // Reset
             document.getElementById('trailer-container').classList.add('hidden');
+            document.getElementById('director-section').classList.add('hidden');
             document.getElementById('youtube-player').innerHTML = '';
 
             // Show UI
             detailView.classList.remove('hidden');
             setTimeout(() => detailView.classList.add('active'), 50);
 
-            // Cargar datos extra
+            // Fetch Extra Data
             fetchExtraDetails(movie.id, type);
             fetchCredits(movie.id, type);
             fetchTrailer(movie.id, type);
@@ -386,15 +431,18 @@
             const res = await fetch(`https://api.themoviedb.org/3/${type}/${id}?api_key=${API_KEY}&language=es-ES`);
             const data = await res.json();
 
-            document.getElementById('detail-tagline').innerText = data.tagline ? `"${data.tagline}"` : "La historia comienza aquí.";
+            document.getElementById('detail-tagline').innerText = data.tagline ? `"${data.tagline}"` : "";
             document.getElementById('detail-runtime').innerText = (data.runtime || data.episode_run_time?.[0] || '90') + ' min';
             document.getElementById('detail-genres').innerText = data.genres.map(g => g.name).slice(0, 2).join(', ');
 
             // Facts
             document.getElementById('fact-name').innerText = data.original_title || data.original_name || '-';
-            document.getElementById('fact-status').innerText = data.status || 'Estrenado';
+            // document.getElementById('fact-status').innerText = data.status || 'Estrenado'; // Removed for simpler layout
+            document.getElementById('fact-date').innerText = data.release_date || data.first_air_date || '-';
             document.getElementById('fact-lang').innerText = data.original_language || 'en';
-            document.getElementById('fact-budget').innerText = data.budget ? `$${data.budget.toLocaleString()}` : 'No disponible';
+            // Companies
+            const companies = data.production_companies ? data.production_companies.map(c => c.name).slice(0, 2).join(', ') : '-';
+            document.getElementById('fact-companies').innerText = companies;
         }
 
         async function fetchTrailer(id, type) {
@@ -419,17 +467,63 @@
         async function fetchCredits(id, type) {
             const res = await fetch(`https://api.themoviedb.org/3/${type}/${id}/credits?api_key=${API_KEY}&language=es-ES`);
             const data = await res.json();
+
+            // Cast
             const list = document.getElementById('cast-list');
-            list.innerHTML = data.cast.slice(0, 15).map(person => `
-                <div class="flex-shrink-0 w-28 bg-[#1a1d23] rounded-2xl overflow-hidden border border-white/5 shadow-xl">
-                    <img class="w-full h-32 object-cover" 
+            list.innerHTML = data.cast.slice(0, 10).map(person => `
+                <div class="flex-shrink-0 w-24 bg-[#1a1d23] rounded-xl overflow-hidden border border-white/5 shadow-xl">
+                    <img class="w-full h-28 object-cover" 
                          src="${person.profile_path ? 'https://image.tmdb.org/t/p/w185' + person.profile_path : 'https://ui-avatars.com/api/?name=' + person.name + '&background=333&color=fff'}">
-                    <div class="p-3">
-                        <p class="text-[10px] font-black truncate text-white uppercase">${person.name}</p>
-                        <p class="text-[9px] text-gray-500 truncate font-semibold">${person.character}</p>
+                    <div class="p-2">
+                        <p class="text-[9px] font-black truncate text-white uppercase">${person.name}</p>
+                        <p class="text-[8px] text-gray-500 truncate font-semibold">${person.character}</p>
                     </div>
                 </div>
             `).join('');
+
+            // Director Logic
+            if (type === 'movie') {
+                const director = data.crew.find(p => p.job === 'Director');
+                if (director) {
+                    fetchDirectorMovies(director.id, director.name);
+                }
+            }
+        }
+
+        async function fetchDirectorMovies(personId, name) {
+            try {
+                // Discover movies by director
+                const res = await fetch(`https://api.themoviedb.org/3/discover/movie?api_key=${API_KEY}&with_crew=${personId}&sort_by=popularity.desc&language=es-ES`);
+                const data = await res.json();
+
+                if (data.results && data.results.length > 0) {
+                    // Filter out current movie if possible, but simplicity first
+                    const movies = data.results.slice(0, 10);
+
+                    document.getElementById('director-title').innerText = `Más de ${name}`;
+                    document.getElementById('director-section').classList.remove('hidden');
+
+                    const list = document.getElementById('director-list');
+                    list.innerHTML = movies.map(m => `
+                        <div class="flex-shrink-0 w-28 relative cursor-pointer" onclick='openDetail(${JSON.stringify(m).replace(/'/g, "&apos;")})'>
+                             <div class="aspect-[2/3] rounded-xl overflow-hidden bg-gray-800 shadow-xl border border-white/5">
+                                <img src="https://image.tmdb.org/t/p/w185${m.poster_path}" class="w-full h-full object-cover">
+                            </div>
+                            <p class="mt-2 text-[9px] font-bold text-gray-300 truncate">${m.title}</p>
+                        </div>
+                    `).join('');
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        function showProfile() {
+            const user = tg.initDataUnsafe.user;
+            const name = user ? user.first_name : "Usuario";
+            tg.showPopup({
+                title: 'Perfil de CineGram',
+                message: `Hola, ${name}. \n\nGracias por usar la versión web de CineGram.\nPronto podrás ver tus favoritos aquí.`,
+                buttons: [{ type: 'ok' }]
+            });
         }
 
         function closeDetail() {
@@ -437,7 +531,7 @@
             detailView.classList.remove('active');
             setTimeout(() => {
                 detailView.classList.add('hidden');
-                document.getElementById('youtube-player').innerHTML = ''; // Parar trailer
+                document.getElementById('youtube-player').innerHTML = '';
             }, 400);
         }
 
